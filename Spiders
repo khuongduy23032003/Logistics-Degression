@@ -1,0 +1,25 @@
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+data = {
+    'Grain size': [0.245, 0.247, 0.285, 0.299, 0.327, 0.336, 0.356, 0.363, 0.364, 0.399, 0.409, 0.421, 
+                   0.432, 0.473, 0.509, 0.529, 0.529, 0.569, 0.569, 0.596, 0.638, 0.638, 0.656, 0.736, 0.856, 1.036, 1.129],
+    'Spiders': ['absent', 'absent', 'present', 'present', 'present', 'present', 'present', 'absent', 
+                'absent', 'absent', 'absent', 'present', 'absent', 'absent', 'present', 'present', 
+                'present', 'present', 'present', 'absent', 'present', 'absent', 'present', 'present', 
+                'absent', 'present', 'present']
+}
+df = pd.DataFrame(data)
+df['Spiders'] = df['Spiders'].apply(lambda x: 1 if x == 'present' else 0)
+X = df[['Grain size']]  
+y = df['Spiders']  
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = LogisticRegression()
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy * 100:.2f}%')
+print("Dự đoán:", y_pred)
