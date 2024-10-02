@@ -1,64 +1,91 @@
-
-
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Logistic Function
-def logistic_function(z):
+# Small value to prevent division by zero
+epsilon = 1e-20  
+
+# Logistic function
+def logistic(z):
     return 1 / (1 + np.exp(-z))
 
-# Prediction Function
-def predict(X, theta0, theta1):
-    z = theta0 + theta1 * X
-    gz = logistic_function(z)
-    return gz
+# Cost function for logistic regression
+def calculate_loss(X, y, params):
+    m = len(y)
+    predictions = logistic(X @ params)
+    loss = -(1/m) * (y.T @ np.log(predictions + epsilon) + (1 - y).T @ np.log(1 - predictions + epsilon))
+    return loss
 
-# Cost Function (Binary Cross-Entropy)
-def cost_function(X, y_true, theta0, theta1):
-    m = len(X)
-    epsilon = 1e-15  # Để tránh log(0)
-    
-    y_pred = predict(X, theta0, theta1)
-    
-    # Cross-entropy loss
-    cost = (-1 / m) * np.sum(y_true * np.log(y_pred + epsilon) + (1 - y_true) * np.log(1 - y_pred + epsilon))
-    return cost
+# Gradient descent algorithm
+def gradient_descent(X, y, params, alpha, max_iters, tolerance):
+    m = len(y)
+    loss_history = []
+    prev_loss = float('inf')
 
-# Gradient Descent
-def gradient_descent(X, y, theta0, theta1, learning_rate, iterations):
-    m = len(X)
-    
-    for _ in range(iterations):
-        # Tính đạo hàm của hàm mất mát (gradient)
-        gradient0 = (1 / m) * np.sum(predict(X, theta0, theta1) - y)
-        gradient1 = (1 / m) * np.sum((predict(X, theta0, theta1) - y) * X)
-        
-        # Cập nhật trọng số (theta0, theta1)
-        theta0 -= learning_rate * gradient0
-        theta1 -= learning_rate * gradient1
-    
-    return theta0, theta1
+    for i in range(max_iters):
+        predictions = logistic(X @ params)
+        gradients = (1/m) * (X.T @ (predictions - y))
+        params -= alpha * gradients
+        current_loss = calculate_loss(X, y, params)
+        loss_history.append(current_loss.flatten())
 
-# Dữ liệu ví dụ
-X = np.array([0.245, 0.247, 0.285, 0.299, 0.327, 0.336, 0.356, 0.364, 0.394, 0.409, 0.421, 0.432, 0.473, 0.509, 0.529, 0.565, 0.569, 0.589, 0.638, 0.709])
-y = np.array([0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])  # 0: Absent, 1: Present
+        if abs(prev_loss - current_loss) < tolerance:
+            print(f"Converged at iteration {i+1}")
+            break
 
-# Khởi tạo trọng số ban đầu
-theta0 = 0
-theta1 = 0
+        prev_loss = current_loss
 
-# Thông số huấn luyện
-learning_rate = 0.01
-iterations = 10000
+    return params, loss_history
 
-# Huấn luyện mô hình logistic regression
-theta0, theta1 = gradient_descent(X, y, theta0, theta1, learning_rate, iterations)
+# Predict using logistic regression model
+def classify(X, params):
+    return (logistic(X @ params) >= 0.5).astype(int)
 
-# In ra các trọng số sau khi huấn luyện
-print(f'Theta 0: {theta0}')
-print(f'Theta 1: {theta1}')
+# Data: Grain size and spider presence
+grain_sizes = np.array([0.245, 0.247, 0.285, 0.299, 0.327, 0.347, 0.356, 0.36, 0.363, 0.364,
+                        0.398, 0.4, 0.409, 0.421, 0.432, 0.473, 0.509, 0.529, 0.561, 0.569,
+                        0.594, 0.638, 0.656, 0.816, 0.853, 0.938, 1.036, 1.045])
+spider_presence = np.array([0, 0, 1, 1, 1, 1, 0, 1, 0, 1,
+                            0, 1, 0, 1, 0, 1, 1, 1, 0, 0,
+                            1, 1, 1, 1, 1, 1, 1, 1])
 
-# Dự đoán sự hiện diện của nhện trên các giá trị mới
-new_grain_size = np.array([0.250, 0.500, 0.600])  # Ví dụ kích thước hạt mới
-predictions = predict(new_grain_size, theta0, theta1)
+# Prepare dataset
+num_samples = len(spider_presence)
+X = np.c_[np.ones(num_samples), grain_sizes]
+y = spider_presence.reshape(-1, 1)
 
-print(f'Dự đoán sự hiện diện của nhện: {predictions}')
+# Initialize parameters
+params = np.zeros((X.shape[1], 1))
+
+# Hyperparameters
+alpha = 1e-3
+max_iters = 50000
+tolerance = 1e-15
+
+# Perform gradient descent to learn parameters
+params, loss_history = gradient_descent(X, y, params, alpha, max_iters, tolerance)
+
+# Plot the loss history
+loss_history = np.array(loss_history).flatten()
+plt.figure(figsize=(8, 6))
+plt.plot(range(len(loss_history)), loss_history, color='blue')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.show()
+
+# Make predictions
+predictions = classify(X, params)
+
+# Plot the predictions
+plt.figure(figsize=(8, 6))
+plt.scatter(grain_sizes, spider_presence, color='blue', label='Actual Data')
+plt.scatter(grain_sizes, predictions, color='red', marker='x', label='Predicted Data')
+plt.xlabel('Grain Size (mm)')
+plt.ylabel('Spider Presence')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Calculate training accuracy
+accuracy = np.mean(predictions == y.flatten()) * 100
+print(f"Training Accuracy: {accuracy:.2f}%")
